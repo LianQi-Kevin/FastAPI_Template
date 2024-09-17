@@ -1,9 +1,13 @@
 import argparse
 import logging
+import os
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from backend.tools import log_set
 from backend.routers import example_router
@@ -14,6 +18,25 @@ log_set(logging.DEBUG)
 # init Fastapi
 app = FastAPI()
 app.include_router(example_router)
+
+# load vue dist
+@app.get("/")
+async def get_index():
+    return FileResponse('dist/index.html')
+
+
+@app.get("/{custom_path:path}")
+async def get_static_files_or_404(custom_path):
+    # try open file for path
+    file_path = os.path.join("dist", custom_path)
+    if os.path.isfile(file_path):
+        return FileResponse(file_path)
+    return FileResponse('dist/index.html')
+
+
+app.mount("/dist", StaticFiles(directory="dist/"), name="dist")
+# noinspection PyTypeChecker
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # allow CORS
 # noinspection PyTypeChecker
